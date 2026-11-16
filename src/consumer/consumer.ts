@@ -15,6 +15,6 @@ export class Consumer {
   }
 
   async noAck(messageId: string) {
-    return this.broker.noAck(this.queueName, messageId);
+    this.broker.noAck(this.queueName, messageId);
   }
 }

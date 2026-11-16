@@ -62,11 +62,7 @@ export class Broker {
     async noAck(queueName: string, messageId: string): Promise<void> {
         const queue = this.storage.getQueue(queueName);
 
-        const message = await this.storage.messageStore.get(messageId);
-        if(!message) return;
-
-        await queue.noAck(message);
-
+        await queue.noAck(messageId);
     }
 
     async getMessage(

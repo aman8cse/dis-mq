@@ -11,30 +11,26 @@ export class Worker {
     }
 
     start(): void {
-        if(this.running) return;
+        if (this.running) return;
 
         this.running = true;
         this.loopPromise = this.processLoop();
     }
 
     private async processLoop(): Promise<void> {
-        while(this.running) {
+        while (this.running) {
             try {
                 const message = await this.consumer.consume();
 
-                if(!message) {
+                if (!message) {
                     await this.sleep(250);
                     continue;
                 }
 
-                try {
-                let res =    await this.handler(message);
-                } catch (error) {
-                    await this.consumer.noAck(message.id);
-                }
+                let res = await this.handler(message);
 
                 await this.consumer.ack(message.id);
-            } catch(error) {
+            } catch (error) {
                 console.error("Worker processing error: ", error);
                 await this.sleep(1000);
             }

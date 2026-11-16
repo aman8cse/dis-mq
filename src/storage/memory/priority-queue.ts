@@ -123,7 +123,12 @@ export class PriorityQueue implements QueueStore {
         return this.processing.delete(messageId);
     }
 
-    async noAck(message: Message): Promise<void> {
+    async noAck(messageId: string): Promise<void> {
+        const message = this.processing.get(messageId);
+        if(!message) return;
+
+        this.processing.delete(messageId);
+
         this.enqueue(message);
     }
 }
