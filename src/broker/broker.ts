@@ -1,31 +1,81 @@
-import type { MessageInput, Message } from "../core/types.js";
 import { createMessage } from "../core/message.js";
-import type { MessageStore } from "../storage/storage.interface.js";
-import type { QueueStore } from "../storage/queue.interface.js";
+import type { Message, MessageInput } from "../core/types.js";
+import type { Storage } from "../storage/storage.js";
 
 export class Broker {
-    constructor(
-        private readonly messageStore: MessageStore,
-        private readonly queueStore: QueueStore
-    ) {}
+    constructor(private readonly storage: Storage) { }
 
-    async publish(input: MessageInput): Promise<Message> {
+    async publish(
+        queueName: string,
+        input: MessageInput,
+    ): Promise<Message> {
         const message = createMessage(input);
 
-        await this.queueStore.enqueue(message);
+        const queue = this.storage.getQueue(queueName);
+
+        await this.storage.messageStore.set(message);
+
+        try {
+            await queue.enqueue(message);
+        } catch (error) {
+            // Compensate for failed enqueue.
+            await this.storage.messageStore.delete(message.id);
+            throw error;
+        }
 
         return message;
     }
 
-    async getMessage(messageId: string): Promise<Message | undefined> {
-        return this.messageStore.get(messageId);
+    async consume(queueName: string): Promise<Message | undefined> {
+        const queue = this.storage.getQueue(queueName);
+
+        while (true) {
+            const message = await queue.claim();
+
+            if (!message) return undefined;
+
+            // Ignore expired messages.
+            if (
+                message.expiresAt !== null &&
+                message.expiresAt <= Date.now()
+            ) {
+                await this.storage.messageStore.delete(message.id);
+                continue;
+            }
+
+            return message;
+        }
     }
 
-    async consume(): Promise<Message | undefined> {
-        return this.queueStore.dequeue();
+    async ack(queueName: string, messageId: string): Promise<boolean> {
+        const queue = this.storage.getQueue(queueName);
+
+        const acknowledged = await queue.ack(messageId);
+
+        if(acknowledged) {
+            await this.storage.messageStore.delete(messageId);
+        }
+
+        return acknowledged;
     }
 
-    async size(): Promise<number> {
-        return this.queueStore.size();
+    async noAck(queueName: string, messageId: string): Promise<void> {
+        const queue = this.storage.getQueue(queueName);
+
+        const message = await this.storage.messageStore.get(messageId);
+        if(!message) return;
+
+        await queue.noAck(message);
+
+    }
+
+    async getMessage(
+        messageId: string,
+    ): Promise<Message | undefined> {
+        return this.storage.messageStore.get(messageId);
+    }
+
+    async size(queueName: string): Promise<number> {
+        return this.storage.getQueue(queueName).size();
     }
 }

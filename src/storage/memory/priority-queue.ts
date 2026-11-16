@@ -10,6 +10,8 @@ export class PriorityQueue implements QueueStore {
     private heap: HeapEntry[] = [];
     private sequence = 0;
 
+    private processing = new Map<string, Message>();
+
     // Higher priority comes first.
     // For equal priority, older messages come first.
     private hasHigherPriority(a: HeapEntry, b: HeapEntry): boolean {
@@ -106,5 +108,22 @@ export class PriorityQueue implements QueueStore {
 
     isEmpty(): boolean {
         return this.heap.length === 0;
+    }
+
+    async claim(): Promise<Message | undefined> {
+        const message = await this.dequeue();
+
+        if(!message) return undefined;
+
+        this.processing.set(message.id, message);
+        return message;
+    }
+
+    async ack(messageId: string): Promise<boolean> {
+        return this.processing.delete(messageId);
+    }
+
+    async noAck(message: Message): Promise<void> {
+        this.enqueue(message);
     }
 }

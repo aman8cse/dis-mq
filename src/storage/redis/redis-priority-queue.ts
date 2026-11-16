@@ -18,8 +18,6 @@ export class RedisPriorityQueue implements QueueStore {
     }
 
     async enqueue(message: Message): Promise<void> {
-        await this.messageStore.set(message);
-
         await redis.eval(
             `
             local sequence = redis.call("INCR", KEYS[2])
