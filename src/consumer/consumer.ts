@@ -11,7 +11,7 @@ export class Consumer {
   }
 
   async ack(messageId: string) {
-    return this.broker.ack(this.queueName, messageId);
+    this.broker.ack(this.queueName, messageId);
   }
 
   async noAck(messageId: string) {

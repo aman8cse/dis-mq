@@ -27,9 +27,15 @@ export class Worker {
                     continue;
                 }
 
-                let res = await this.handler(message);
+                try {
+                    let res = await this.handler(message);
+                } catch (error) {
+                    await this.consumer.noAck(message.id);
+                    continue;
+                }
 
                 await this.consumer.ack(message.id);
+                
             } catch (error) {
                 console.error("Worker processing error: ", error);
                 await this.sleep(1000);

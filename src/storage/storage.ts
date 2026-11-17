@@ -11,14 +11,14 @@ export class Storage {
   readonly messageStore: MessageStore;
 
   private readonly queues = new Map<string, QueueStore>();
-  private readonly backend: "memory" | "redis";
+  private readonly backend: string;
 
-  constructor() {
+  constructor({backend = "memeory"}) {
     if (process.env.REDIS_URL) {
-      this.backend = "redis";
+      this.backend = backend;
       this.messageStore = new RedisStore();
     } else {
-      this.backend = "memory";
+      this.backend = backend;
       this.messageStore = new MemoryStore();
     }
   }

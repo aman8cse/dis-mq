@@ -9,7 +9,7 @@ export class MQ {
   private readonly broker: Broker;
 
   constructor() {
-    this.storage = new Storage();
+    this.storage = new Storage({backend: "redis"});
     this.broker = new Broker(this.storage);
   }
 

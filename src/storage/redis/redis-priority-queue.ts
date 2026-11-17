@@ -56,4 +56,16 @@ export class RedisPriorityQueue implements QueueStore {
     async size(): Promise<number> {
         return redis.zcard(this.getKey());
     }
+
+    async claim(): Promise<Message | undefined> {
+        return undefined;
+    }
+
+    async ack(messageId: string): Promise<boolean> {
+        return false;
+    }
+
+    async noAck(messageId: string): Promise<void> {
+        
+    }
 }
