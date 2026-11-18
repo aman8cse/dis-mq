@@ -21,7 +21,7 @@ export class RedisPriorityQueue implements QueueStore {
         return member.substring(member.indexOf(":") + 1);
     }
 
-    async enqueue(message: Message): Promise<void> {
+    async enqueue(messageId: string): Promise<void> {
         await this.redis.eval(
             `
             local sequence = redis.call("INCR", KEYS[2])
@@ -37,7 +37,7 @@ export class RedisPriorityQueue implements QueueStore {
         );
     }
 
-    async dequeue(): Promise<Message | undefined> {
+    async dequeue(): Promise<string | undefined> {
         const result = await this.redis.zpopmin(this.getKey());
 
         if (result.length === 0) return undefined;
@@ -47,7 +47,7 @@ export class RedisPriorityQueue implements QueueStore {
         return this.messageStore.get(messageId);
     }
 
-    async peek(): Promise<Message | undefined> {
+    async peek(): Promise<string | undefined> {
         const result = await this.redis.zrange(this.getKey(), 0, 0);
 
         if (result.length === 0) return undefined;
@@ -61,7 +61,7 @@ export class RedisPriorityQueue implements QueueStore {
         return this.redis.zcard(this.getKey());
     }
 
-    async claim(): Promise<Message | undefined> {
+    async claim(): Promise<string | undefined> {
         return undefined;
     }
 
@@ -69,7 +69,7 @@ export class RedisPriorityQueue implements QueueStore {
         return false;
     }
 
-    async noAck(messageId: string): Promise<void> {
+    async noAck(messageId: string): Promise<boolean> {
         
     }
 }

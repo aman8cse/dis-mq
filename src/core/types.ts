@@ -23,7 +23,7 @@ export type Message = {
 };
 
 export type MessageState = {
-    status: "pending" | "processing" | "completed" | "failed" | string;
+    status: "pending" | "processing" | "completed" | "failed" | "delayed" | string;
     retryCount: number;
     maxRetries: number;
     nextRetryAt: number | null;

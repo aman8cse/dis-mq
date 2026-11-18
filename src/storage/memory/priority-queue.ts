@@ -2,7 +2,8 @@ import type { Message } from "../../core/types.js";
 import type { QueueStore } from "../queue.interface.js";
 
 type HeapEntry = {
-    message: Message;
+    messageId: string;
+    priority: number;
     sequence: number;
 };
 
@@ -10,13 +11,13 @@ export class PriorityQueue implements QueueStore {
     private heap: HeapEntry[] = [];
     private sequence = 0;
 
-    private processing = new Map<string, Message>();
+    private processing = new Set<string>();
 
     // Higher priority comes first.
     // For equal priority, older messages come first.
     private hasHigherPriority(a: HeapEntry, b: HeapEntry): boolean {
-        if (a.message.priority !== b.message.priority) {
-            return a.message.priority > b.message.priority;
+        if (a.priority !== b.priority) {
+            return a.priority > b.priority;
         }
 
         return a.sequence < b.sequence;
@@ -71,9 +72,10 @@ export class PriorityQueue implements QueueStore {
         }
     }
 
-    async enqueue(message: Message): Promise<void> {
+    async enqueue(messageId: string, priority: number): Promise<void> {
         const entry: HeapEntry = {
-            message,
+            messageId,
+            priority,
             sequence: this.sequence++
         };
 
@@ -81,7 +83,7 @@ export class PriorityQueue implements QueueStore {
         this.heapifyUp(this.heap.length - 1);
     }
 
-    async dequeue(): Promise<Message | undefined> {
+    async dequeue(): Promise<string | undefined> {
         if (this.isEmpty()) {
             return undefined;
         }
@@ -95,11 +97,11 @@ export class PriorityQueue implements QueueStore {
             this.heapifyDown(0);
         }
 
-        return highestPriority.message;
+        return highestPriority?.messageId;
     }
 
-    async peek(): Promise<Message | undefined> {
-        return this.heap[0]?.message;
+    async peek(): Promise<string | undefined> {
+        return this.heap[0]?.messageId;
     }
 
     async size(): Promise<number> {
@@ -110,25 +112,20 @@ export class PriorityQueue implements QueueStore {
         return this.heap.length === 0;
     }
 
-    async claim(): Promise<Message | undefined> {
-        const message = await this.dequeue();
+    async claim(): Promise<string | undefined> {
+        const messageId = await this.dequeue();
 
-        if(!message) return undefined;
+        if(!messageId) return undefined;
 
-        this.processing.set(message.id, message);
-        return message;
+        this.processing.add(messageId);
+        return messageId;
     }
 
     async ack(messageId: string): Promise<boolean> {
         return this.processing.delete(messageId);
     }
 
-    async noAck(messageId: string): Promise<void> {
-        const message = this.processing.get(messageId);
-        if(!message) return;
-
-        this.processing.delete(messageId);
-
-        this.enqueue(message);
+    async noAck(messageId: string): Promise<boolean> {
+        return this.processing.delete(messageId);
     }
 }

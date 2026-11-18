@@ -16,7 +16,7 @@ export class Broker {
         await this.storage.messageStore.set(message);
 
         try {
-            await queue.enqueue(message);
+            await queue.enqueue(message.id, message.priority);
         } catch (error) {
             // Compensate for failed enqueue.
             await this.storage.messageStore.delete(message.id);
@@ -30,9 +30,11 @@ export class Broker {
         const queue = this.storage.getQueue(queueName);
 
         while (true) {
-            const message = await queue.claim();
+            const messageId = await queue.claim();
+            if (!messageId) return undefined;
 
-            if (!message) return undefined;
+            const message = await this.getMessage(messageId);
+            if(!message) return undefined;
 
             // Ignore expired messages (TTL Check).
             if (
@@ -60,25 +62,28 @@ export class Broker {
     }
 
     async noAck(queueName: string, messageId: string): Promise<void> {
-        const message = await this.storage.messageStore.get(messageId);
+        const message = await this.getMessage(messageId);
         if (!message) return;
 
         message.state.retryCount++;
+
+        const queue = this.storage.getQueue(queueName);
+        const acknowledged = await queue.noAck(messageId);
+
+        if(!acknowledged) return;
 
         if (message?.state.maxRetries <= message?.state.retryCount) {
             const DLQ = this.storage.getDLQ(queueName);
 
             message.state.status = "failed";
-            DLQ.enqueue(message);
+            await DLQ.enqueue(message.id, message.priority);
         } else {
             const delayedQ = this.storage.getDelayedQ(queueName);
 
-            message.state.status = "pending";
-            delayedQ.enqueue(message);
+            //calculate next try
+            message.state.status = "delayed";
+            await delayedQ.enqueue(message.id, message.priority);
         }
-
-        const queue = this.storage.getQueue(queueName);
-        await queue.noAck(messageId);
     }
 
     async getMessage(
