@@ -60,7 +60,7 @@ export class Storage {
       DLQ = new PriorityQueue();
     }
 
-    this.queues.set(name, DLQ);
+    this.DLQ.set(name, DLQ);
 
     return DLQ;
   }
@@ -80,7 +80,7 @@ export class Storage {
       delayedQ = new PriorityQueue();
     }
 
-    this.queues.set(name, delayedQ);
+    this.delayedQ.set(name, delayedQ);
 
     return delayedQ;
   }

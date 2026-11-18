@@ -52,7 +52,7 @@ export class Broker {
 
         const acknowledged = await queue.ack(messageId);
 
-        if(acknowledged) {
+        if (acknowledged) {
             await this.storage.messageStore.delete(messageId);
         }
 
@@ -60,21 +60,25 @@ export class Broker {
     }
 
     async noAck(queueName: string, messageId: string): Promise<void> {
-        const queue = this.storage.getQueue(queueName);
-
         const message = await this.storage.messageStore.get(messageId);
-        if(!message) return;
+        if (!message) return;
 
         message.state.retryCount++;
 
-        if(message?.state.maxRetries <= message?.state.retryCount) {
+        if (message?.state.maxRetries <= message?.state.retryCount) {
+            const DLQ = this.storage.getDLQ(queueName);
+
+            message.state.status = "failed";
+            DLQ.enqueue(message);
+        } else {
             const delayedQ = this.storage.getDelayedQ(queueName);
 
             message.state.status = "pending";
             delayedQ.enqueue(message);
         }
 
-        if(message.state.retryCount === 0) await queue.noAck(messageId);
+        const queue = this.storage.getQueue(queueName);
+        await queue.noAck(messageId);
     }
 
     async getMessage(
