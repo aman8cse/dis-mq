@@ -28,12 +28,15 @@ export class Worker {
                 }
 
                 try {
+                    message.state.status = "processing";
                     let res = await this.handler(message);
                 } catch (error) {
                     await this.consumer.noAck(message.id);
+                    message.state.status = "failed";
                     continue;
                 }
 
+                message.state.status = "acknowledged";
                 await this.consumer.ack(message.id);
                 
             } catch (error) {

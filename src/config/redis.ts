@@ -1,10 +1,17 @@
-import Redis from "ioredis";
+import { Redis } from "ioredis";
 import "dotenv/config";
 
-const redisUrl = process.env.REDIS_URL;
+let redisClient: Redis | null = null;
 
-if (!redisUrl) {
-    throw new Error("REDIS_URL is not configured");
+export function getRedisClient() {
+    if(redisClient) return redisClient;
+
+    const redisUrl = process.env.REDIS_URL;
+
+    if (!redisUrl) {
+        throw new Error("REDIS_URL is not configured");
+    }
+
+    redisClient = new Redis(redisUrl);
+    return redisClient;
 }
-
-export const redis = new Redis(redisUrl);

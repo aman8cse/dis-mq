@@ -1,13 +1,17 @@
 import type { Message } from "../../core/types.js";
 import type { MessageStore } from "../storage.interface.js";
-import { redis } from "../../config/redis.js";
 import type { QueueStore } from "../queue.interface.js";
+import { getRedisClient } from "../../config/redis.js";
 
 export class RedisPriorityQueue implements QueueStore {
     constructor(
         private readonly name: string,
         private readonly messageStore: MessageStore
     ) {}
+
+    private get redis() {
+        return getRedisClient();
+    }
 
     private getKey(): string {
         return `mq:queue:${this.name}`;
@@ -18,7 +22,7 @@ export class RedisPriorityQueue implements QueueStore {
     }
 
     async enqueue(message: Message): Promise<void> {
-        await redis.eval(
+        await this.redis.eval(
             `
             local sequence = redis.call("INCR", KEYS[2])
             local member = string.format("%016d", sequence) .. ":" .. ARGV[2]
@@ -34,7 +38,7 @@ export class RedisPriorityQueue implements QueueStore {
     }
 
     async dequeue(): Promise<Message | undefined> {
-        const result = await redis.zpopmin(this.getKey());
+        const result = await this.redis.zpopmin(this.getKey());
 
         if (result.length === 0) return undefined;
 
@@ -44,7 +48,7 @@ export class RedisPriorityQueue implements QueueStore {
     }
 
     async peek(): Promise<Message | undefined> {
-        const result = await redis.zrange(this.getKey(), 0, 0);
+        const result = await this.redis.zrange(this.getKey(), 0, 0);
 
         if (result.length === 0) return undefined;
 
@@ -54,7 +58,7 @@ export class RedisPriorityQueue implements QueueStore {
     }
 
     async size(): Promise<number> {
-        return redis.zcard(this.getKey());
+        return this.redis.zcard(this.getKey());
     }
 
     async claim(): Promise<Message | undefined> {

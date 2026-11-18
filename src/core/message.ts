@@ -55,6 +55,12 @@ export function createMessage(input: MessageInput): Message {
     }
 
     const createdAt = Date.now();
+    const state = {
+        status: "pending",
+        retryCount: 0,
+        maxRetries: 10,
+        nextRetryAt: 0,
+    };
 
     const expiresAt =
         input.ttl !== undefined
@@ -72,6 +78,7 @@ export function createMessage(input: MessageInput): Message {
         payload,
         priority,
         createdAt,
+        state,
         expiresAt,
         metadata
     });

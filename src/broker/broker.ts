@@ -34,7 +34,7 @@ export class Broker {
 
             if (!message) return undefined;
 
-            // Ignore expired messages.
+            // Ignore expired messages (TTL Check).
             if (
                 message.expiresAt !== null &&
                 message.expiresAt <= Date.now()
@@ -62,7 +62,19 @@ export class Broker {
     async noAck(queueName: string, messageId: string): Promise<void> {
         const queue = this.storage.getQueue(queueName);
 
-        await queue.noAck(messageId);
+        const message = await this.storage.messageStore.get(messageId);
+        if(!message) return;
+
+        message.state.retryCount++;
+
+        if(message?.state.maxRetries <= message?.state.retryCount) {
+            const delayedQ = this.storage.getDelayedQ(queueName);
+
+            message.state.status = "pending";
+            delayedQ.enqueue(message);
+        }
+
+        if(message.state.retryCount === 0) await queue.noAck(messageId);
     }
 
     async getMessage(
