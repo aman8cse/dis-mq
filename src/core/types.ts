@@ -17,14 +17,22 @@ export type Message = {
     readonly payload: JsonValue;
     readonly priority: number;
     readonly createdAt: number;
-    state: MessageState;
     readonly expiresAt: number | null;
     readonly metadata: Readonly<Record<string, JsonValue>>;
+    retry: {
+        maxRetries: number;
+        backoff: {
+            type: "fixed" | "exponential";
+            delay: number;
+            multiplier?: number;
+        };
+    };
+
+    state: {
+        status: MessageStatus;
+        retryCount: number;
+        nextRetryAt: number | null;
+    };
 };
 
-export type MessageState = {
-    status: "pending" | "processing" | "completed" | "failed" | "delayed" | string;
-    retryCount: number;
-    maxRetries: number;
-    nextRetryAt: number | null;
-};
+export type MessageStatus = "pending" | "processing" | "completed" | "failed" | "delayed";

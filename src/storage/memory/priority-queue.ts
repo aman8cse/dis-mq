@@ -115,17 +115,21 @@ export class PriorityQueue implements QueueStore {
     async claim(): Promise<string | undefined> {
         const messageId = await this.dequeue();
 
-        if(!messageId) return undefined;
+        if (!messageId) return undefined;
 
         this.processing.add(messageId);
         return messageId;
     }
 
     async ack(messageId: string): Promise<boolean> {
-        return this.processing.delete(messageId);
+        return this.removeFromProcessing(messageId);
     }
 
     async noAck(messageId: string): Promise<boolean> {
+        return this.removeFromProcessing(messageId);
+    }
+
+    async removeFromProcessing(messageId: string): Promise<boolean> {
         return this.processing.delete(messageId);
     }
 }

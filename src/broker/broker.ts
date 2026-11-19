@@ -34,13 +34,17 @@ export class Broker {
             if (!messageId) return undefined;
 
             const message = await this.getMessage(messageId);
-            if(!message) return undefined;
+            if(!message) {
+                await queue.noAck(messageId);
+                continue;
+            }
 
             // Ignore expired messages (TTL Check).
             if (
                 message.expiresAt !== null &&
                 message.expiresAt <= Date.now()
             ) {
+                await queue.noAck(messageId);
                 await this.storage.messageStore.delete(message.id);
                 continue;
             }
@@ -84,6 +88,7 @@ export class Broker {
             message.state.status = "delayed";
             await delayedQ.enqueue(message.id, message.priority);
         }
+        await this.storage.messageStore.set(message);
     }
 
     async getMessage(
